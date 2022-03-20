@@ -1,0 +1,107 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'jacoco'
+}
+
+android {
+    compileSdk 31
+
+    defaultConfig {
+        applicationId "com.test.code.coverage"
+        minSdk 21
+        targetSdk 31
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.3.0'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.4.1'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+}
+
+
+def androidExclusion = [
+        '**/R.*',
+        '**/R$*.*',
+        '**/BuildConfig.*',
+        '**/Manifest*.*',
+        '**/*Fragment*.*',
+        '**/*Activity*.*'
+]
+
+jacoco {
+    toolVersion = '0.8.7'
+}
+
+task getCoverage(type: JacocoReport, dependsOn: 'testDebugUnitTest') {
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+    getClassDirectories().setFrom(fileTree(
+            dir: 'build/tmp/kotlin-classes/debug',
+            excludes: androidExclusion
+
+    ))
+    getSourceDirectories().setFrom(files('src/main/java'))
+    getExecutionData().setFrom(files('build/jacoco/testDebugUnitTest.exec'))
+}
+
+// task for coverage rule
+task jacocoTestCoverageVerification(type: JacocoCoverageVerification, dependsOn: 'getCoverage') {
+    getClassDirectories().setFrom(fileTree(
+            dir: 'build/tmp/kotlin-classes/debug',
+            excludes: androidExclusion
+
+    ))
+    getSourceDirectories().setFrom(files('src/main/java'))
+    getExecutionData().setFrom(files('build/jacoco/testDebugUnitTest.exec'))
+    violationRules {
+        failOnViolation = true
+        rule {
+            limit {
+                minimum = 0.9 // 90%
+            }
+        }
+    }
+}
+
+// task to copy git hook on local; required to to have hook file for developers
+task installLocalGitHook(type: Copy){
+    from new File(rootProject.rootDir, '././scripts/pre-push')
+    into { new File(rootProject.rootDir, '././.git/hooks')}
+    fileMode 0775
+}
+// add git hook dependency on build
+build.dependsOn
